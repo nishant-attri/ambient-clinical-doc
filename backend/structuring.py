@@ -47,39 +47,64 @@ def extract_structured_note(transcript: str, max_retries: int = 2):
     schema_str = json.dumps(ClinicalNote.model_json_schema(), indent=2)
 
     prompt = (
-        "You are a clinical documentation assistant.\n\n"
-        "STRICT RULES:\n"
-        "- Extract ONLY explicitly stated information from the transcript.\n"
-        "- DO NOT infer or assume anything.\n"
-        "- If a field is not mentioned, return null or empty list.\n"
-        "- DO NOT generate assessment or plan unless explicitly stated.\n"
-        "- DO NOT fabricate medications or diagnoses.\n\n"
-        "FIELD GUIDELINES:\n"
-        "- chief_complaint: The primary reason the patient came in (short phrase).\n"
-        "- history_present_illness: Detailed description including duration and symptoms.\n\n"
-        "SOCIAL HISTORY FORMAT:\n"
-        "- Return structured fields like:\n"
-        '  {"living_situation": "...", "smoking": "...", "alcohol": "...", "drugs": "...", "sexual_activity": "..."}\n'
-        "- Do NOT use questions as keys.\n\n"
-        "EVIDENCE MAP RULES:\n"
-        "- evidence_map MUST use ONLY these keys:\n"
-        '  ["patient_info", "chief_complaint", "history_present_illness",\n'
-        '   "past_medical_history", "medications", "allergies",\n'
-        '   "social_history", "family_history", "review_of_systems",\n'
-        '   "assessment", "plan", "follow_up"]\n'
-        "- Each key should map to ONE supporting quote.\n"
-        "- If a field is null or empty, DO NOT include it in evidence_map.\n"
-        "- Do NOT create new keys.\n"
-        "- Do NOT summarize or paraphrase evidence.\n"
-        "- Evidence must be exact substring from transcript.\n"
-        "- Evidence snippets must be SHORT (1-2 sentences max).\n"
-        "- Do NOT combine multiple dialogue turns.\n\n"
-        "Return ONLY valid JSON. Do not include markdown or code blocks.\n\n"
-        "Schema:\n"
-        + schema_str +
-        "\n\nTranscript:\n"
-        + transcript
-    )
+    "You are a clinical documentation assistant. Your job is to convert a raw "
+    "doctor-patient conversation transcript into a clean, professional clinical note.\n\n"
+    
+    "STRICT RULES:\n"
+    "- Extract ONLY explicitly stated information from the transcript.\n"
+    "- DO NOT infer or assume anything not directly stated.\n"
+    "- If a field is not mentioned, return null or empty list.\n"
+    "- DO NOT generate assessment or plan unless explicitly stated by the doctor.\n"
+    "- DO NOT fabricate medications or diagnoses.\n\n"
+    
+    "WRITING STYLE RULES — VERY IMPORTANT:\n"
+    "- Write in clean, professional clinical language.\n"
+    "- DO NOT copy verbatim sentences from the transcript.\n"
+    "- DO NOT include filler words like 'like', 'um', 'yeah', 'I think', 'I guess'.\n"
+    "- Summarise and paraphrase into concise clinical statements.\n"
+    "- Write in third person (e.g. 'Patient reports...' not 'I've been...').\n"
+    "- Keep each field concise — 1 to 3 sentences maximum.\n\n"
+    
+    "FIELD GUIDELINES:\n"
+    "- chief_complaint: One short phrase — the primary reason for the visit.\n"
+    "- history_present_illness: Concise clinical summary of onset, duration, "
+    "character, associated symptoms. Maximum 3 sentences.\n"
+    "- past_medical_history: List of confirmed conditions only. Empty list if none.\n"
+    "- medications: List of confirmed medications only. Empty list if none.\n"
+    "- allergies: List of confirmed allergies only. Empty list if none.\n"
+    "- family_history: One concise sentence summarising relevant family conditions.\n\n"
+    
+    "SOCIAL HISTORY FORMAT:\n"
+    "- Return structured fields like:\n"
+    '  {"living_situation": "...", "smoking": "...", "alcohol": "...", '
+    '"drugs": "...", "sexual_activity": "..."}\n'
+    "- Write concise clinical statements, not quotes from the transcript.\n"
+    "- Do NOT use questions as keys.\n\n"
+    
+    "REVIEW OF SYSTEMS:\n"
+    "- If the doctor asked about specific symptoms and the patient responded, "
+    "populate this field.\n"
+    "- Format as a dictionary with symptom as key and response as value.\n"
+    '- Example: {"headache": "denied", "fever": "denied", "cough": "denied"}\n\n'
+    
+    "EVIDENCE MAP RULES:\n"
+    "- evidence_map MUST use ONLY these keys:\n"
+    '  ["patient_info", "chief_complaint", "history_present_illness",\n'
+    '   "past_medical_history", "medications", "allergies",\n'
+    '   "social_history", "family_history", "review_of_systems",\n'
+    '   "assessment", "plan", "follow_up"]\n'
+    "- Each key should map to ONE short supporting quote from the transcript.\n"
+    "- If a field is null or empty, DO NOT include it in evidence_map.\n"
+    "- Do NOT create new keys.\n"
+    "- Evidence must be an exact substring from the transcript.\n"
+    "- Evidence snippets must be SHORT — 1 sentence maximum.\n\n"
+    
+    "Return ONLY valid JSON. Do not include markdown or code blocks.\n\n"
+    "Schema:\n"
+    + schema_str +
+    "\n\nTranscript:\n"
+    + transcript
+)
 
     for attempt in range(max_retries + 1):
 
